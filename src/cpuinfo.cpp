@@ -4,8 +4,11 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <atomic>
 #include <biscuit/assert.hpp>
 #include <biscuit/cpuinfo.hpp>
+#include <csignal>
+#include <vector>
 
 #if defined(__linux__) && defined(__riscv)
 #include <asm/hwcap.h>
@@ -249,11 +252,240 @@
 #endif
 
 namespace biscuit {
+void EmitInstructionFromExtension(Assembler& as, RISCVExtension extension) {
+    switch (extension) {
+        case RISCVExtension::I: {
+            as.ADD(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::M: {
+            as.MUL(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::A: {
+            as.AMOADD_D(Ordering::AQRL, t0, t0, s2);
+            break;
+        }
+        case RISCVExtension::F: {
+            as.FADD_S(ft0, ft0, ft0);
+            break;
+        }
+        case RISCVExtension::D: {
+            as.FADD_D(ft0, ft0, ft0);
+            break;
+        }
+        case RISCVExtension::C:
+        case RISCVExtension::Zca: {
+            as.C_ADD(t0, t0);
+            break;
+        }
+        case RISCVExtension::V: {
+            as.VAND(v1, v1, v1);
+            break;
+        }
+        case RISCVExtension::Zba: {
+            as.SH1ADD(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::Zbkb: {
+            as.PACK(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::Zbb: {
+            as.ZEXTH(t0, t0);
+            break;
+        }
+        case RISCVExtension::Zbs: {
+            as.BEXT(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::Zicboz: {
+            as.CBO_ZERO(s2);
+            break;
+        }
+        case RISCVExtension::Zbkc: {
+            as.CLMUL(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::Zbc: {
+            as.CLMULR(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::Zbkx: {
+            as.XPERM4(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::Zknd: {
+            as.AES64DS(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::Zkne: {
+            as.AES64ES(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::Zknh: {
+            as.SHA256SIG0(t0, t0);
+            break;
+        }
+        case RISCVExtension::Zksed: {
+            as.SM4ED(t0, t0, t0, 0);
+            break;
+        }
+        case RISCVExtension::Zksh: {
+            as.SM3P0(t0, t0);
+            break;
+        }
+        case RISCVExtension::Zcf: {
+            as.C_FLW(f0, 0, s2);
+            break;
+        }
+        case RISCVExtension::Zcd: {
+            as.C_FLD(f0, 0, s2);
+            break;
+        }
+        case RISCVExtension::Zcb: {
+            as.C_NOT(t0);
+            break;
+        }
+        case RISCVExtension::Zacas: {
+            as.AMOCAS_D(Ordering::AQRL, t0, t0, s2);
+            break;
+        }
+        case RISCVExtension::Zicond: {
+            as.CZERO_EQZ(t0, t0, t0);
+            break;
+        }
+        case RISCVExtension::Zvkb: {
+            as.VANDN(v1, v1, v1);
+            break;
+        }
+        case RISCVExtension::Zvbb: {
+            as.VCTZ(v1, v1);
+            break;
+        }
+        case RISCVExtension::Zvfhmin: {
+            as.VSETIVLI(x0, 1, SEW::E16);
+            as.VFWCVT_F_F(v1, v1);
+            break;
+        }
+        case RISCVExtension::Zvfh: {
+            as.VSETIVLI(x0, 1, SEW::E16);
+            as.VFADD(v1, v1, v1);
+            break;
+        }
+        case RISCVExtension::Zvkg: {
+            as.VSETIVLI(x0, 4, SEW::E32);
+            as.VGHSH(v1, v1, v1);
+            break;
+        }
+        case RISCVExtension::Zvkned: {
+            as.VSETIVLI(x0, 4, SEW::E32);
+            as.VAESEF_VV(v1, v1);
+            break;
+        }
+        case RISCVExtension::Zvknha: {
+            as.VSETIVLI(x0, 4, SEW::E32);
+            as.VSHA2MS(v1, v1, v1);
+            break;
+        }
+        case RISCVExtension::Zvknhb: {
+            as.VSETIVLI(x0, 4, SEW::E64);
+            as.VSHA2MS(v1, v1, v1);
+            break;
+        }
+        case RISCVExtension::Zvbc: {
+            as.VSETIVLI(x0, 1, SEW::E64);
+            as.VCLMUL(v1, v1, v1);
+            break;
+        }
+        case RISCVExtension::Zvksed: {
+            as.VSETIVLI(x0, 4, SEW::E32);
+            as.VSM4R_VV(v1, v1);
+            break;
+        }
+        case RISCVExtension::Zvksh: {
+            as.VSETIVLI(x0, 8, SEW::E32);
+            as.VSM3ME(v1, v1, v1);
+            break;
+        }
+        case RISCVExtension::Zfhmin: {
+            as.FMV_X_H(t0, f0);
+            break;
+        }
+        case RISCVExtension::Zfh: {
+            as.FADD_H(f0, f0, f0);
+            break;
+        }
+        case RISCVExtension::Zfa: {
+            as.FLI_S(f0, 0);
+            break;
+        }
+        case RISCVExtension::Zihintpause:
+        case RISCVExtension::Zihintntl:
+        case RISCVExtension::Zawrs:
+        case RISCVExtension::Zcmop:
+        case RISCVExtension::Zimop:
+        case RISCVExtension::Zkt:
+        case RISCVExtension::Zvkt: 
+        case RISCVExtension::Ztso:
+        case RISCVExtension::Zve32x:
+        case RISCVExtension::Zve32f:
+        case RISCVExtension::Zve64f:
+        case RISCVExtension::Zve64d:
+        case RISCVExtension::Zve64x: {
+            // Can't be checked this way
+            as.LI(s0, 0);
+            break;
+        }
+        case RISCVExtension::Count: {
+            BISCUIT_ASSERT(false);
+            break;
+        }
+    }
+}
+
+bool FeatureCheckFallback(RISCVExtension extension) {
+    static std::vector<uint8_t> features(static_cast<size_t>(RISCVExtension::Count));
+    static std::atomic_flag initialized = ATOMIC_FLAG_INIT;
+
+    if (!initialized.test_and_set()) { // make sure multiple threads don't initialize at the same time
+        biscuit::Assembler as;
+
+        // The signal handler sets s0 to 0 (false) to indicate
+        // that the extension is not available.
+        const auto signalHandler = reinterpret_cast<void(*)(int)>(as.GetCursorPointer());
+        as.LI(s0, 0); this s0 stuff isnt gonna work, use a proper signal handler and userdata
+        as.RET();
+
+        const auto entrypoint = reinterpret_cast<void(*)()>(as.GetCursorPointer());
+        as.LI(s1, (uint64_t)features.data());
+
+        // Set s2 to a valid address for instructions that need to read from memory
+        static uint64_t dummy = 0;
+        as.LI(s2, (uint64_t)&dummy);
+
+        for (int i = 0; i < static_cast<int>(RISCVExtension::Count); i++) {
+            as.LI(s0, 1); // Assume extension exists
+            EmitInstructionFromExtension(as, extension);
+            as.SB(s0, i, s1); // if signal handler was hit, s0 will be 0
+        }
+        as.RET();
+
+        signal(SIGILL, signalHandler);
+
+        as.GetCodeBuffer().SetExecutable();
+        entrypoint();
+
+        signal(SIGILL, SIG_DFL);
+    }
+
+    return features[static_cast<size_t>(extension)] != 0;
+}
 
 bool CPUInfo::Has(RISCVExtension extension) const {
 #if defined(__linux__) && defined(__riscv)
-    static const auto [ima, features0] = []() {
 #ifdef SYS_riscv_hwprobe
+    static const auto [result, ima, features0] = []() {
         riscv_hwprobe pairs[] = {
             {RISCV_HWPROBE_KEY_BASE_BEHAVIOR, 0},
             {RISCV_HWPROBE_KEY_IMA_EXT_0, 0},
@@ -262,48 +494,15 @@ bool CPUInfo::Has(RISCVExtension extension) const {
         long result = syscall(SYS_riscv_hwprobe, pairs, std::size(pairs), 0, nullptr, 0);
         uint64_t ima = pairs[0].value;
         uint64_t features0 = pairs[1].value;
-#else
-        long result = -1;
-        uint64_t ima = 0;
-        uint64_t features0 = 0;
-#endif
         
-        if (result < 0) {
-            // Older kernel versions don't support this syscall.
-            // Fallback to an older implementation
-            static const uint64_t features = getauxval(AT_HWCAP) & (
-                            COMPAT_HWCAP_ISA_I |
-                            COMPAT_HWCAP_ISA_M |
-                            COMPAT_HWCAP_ISA_A |
-                            COMPAT_HWCAP_ISA_F |
-                            COMPAT_HWCAP_ISA_D |
-                            COMPAT_HWCAP_ISA_C |
-                            COMPAT_HWCAP_ISA_V
-            );
-
-            if ((features & (COMPAT_HWCAP_ISA_I | COMPAT_HWCAP_ISA_M | COMPAT_HWCAP_ISA_A)) != 0) {
-                ima = RISCV_HWPROBE_BASE_BEHAVIOR_IMA;
-            }
-
-            if ((features & (COMPAT_HWCAP_ISA_F | COMPAT_HWCAP_ISA_D)) != 0) {
-                features0 |= RISCV_HWPROBE_IMA_FD;
-            }
-
-            if ((features & COMPAT_HWCAP_ISA_C) != 0) {
-                features0 |= RISCV_HWPROBE_IMA_C;
-            }
-
-            if ((features & COMPAT_HWCAP_ISA_V) != 0) {
-                features0 |= RISCV_HWPROBE_IMA_V;
-            }
-        }
-
-        return std::make_pair(ima, features0);
+        return std::make_tuple(result, ima, features0);
     }();
-#else
-    static const uint64_t ima = 0;
-    static const uint64_t features0 = 0;
-#endif
+
+    // Older kernel versions don't support this syscall
+    // Fallback to signal handler method
+    if (result < 0) {
+        return FeatureCheckFallback(extension);
+    }
 
     switch (extension) {
         case RISCVExtension::I:
@@ -410,7 +609,17 @@ bool CPUInfo::Has(RISCVExtension extension) const {
             return (features0 & RISCV_HWPROBE_EXT_ZCMOP) != 0;
         case RISCVExtension::Zawrs:
             return (features0 & RISCV_HWPROBE_EXT_ZAWRS) != 0;
+        case RISCVExtension::Count:
+            BISCUIT_ASSERT(false);
+            return false;
     }
+#else
+    return FeatureCheckFallback(extension);
+#endif
+#else
+    (void)extension;
+    return false;
+#endif
 }
 
 uint32_t CPUInfo::GetVlenb() const {
