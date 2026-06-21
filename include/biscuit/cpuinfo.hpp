@@ -117,6 +117,13 @@ public:
 
     /// Returns the vector register length in bytes.
     uint32_t GetVlenb() const;
+
+    /// Returns the highest userspace-accessible virtual address.
+    /// On Linux, they are the following:
+    ///     With Sv39: 0x0000003fffffffff
+    ///     With Sv48: 0x00007fffffffffff
+    ///     With Sv57: 0x00ffffffffffffff
+    uint64_t GetHighestVirtualAddress() const;
 };
 
 } // namespace biscuit
