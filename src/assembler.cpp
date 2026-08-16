@@ -32,7 +32,7 @@ void Assembler::Bind(Label* label) {
 
 void Assembler::ADD(GPR rd, GPR lhs, GPR rhs) noexcept {
     if (IsOptimizationEnabled(Optimization::AutoCompress)) {
-        if (IsValid3BitCompressedReg(rd) && IsValid3BitCompressedReg(lhs) && IsValid3BitCompressedReg(rhs)) {
+        if (rd != x0 && lhs != x0 && rhs != x0) {
             if (rd == lhs) {
                 C_ADD(rd, rhs);
                 return;
